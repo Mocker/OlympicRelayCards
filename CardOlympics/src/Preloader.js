@@ -21,7 +21,6 @@ export class Preloader extends Phaser.Scene {
         this.load.audio("sfx_starting_gun", "audio/sfx_starting_gun.wav");
         this.load.audio("sfx_step_1", "audio/sfx_step_1.wav");
         this.load.audio("sfx_step_2", "audio/sfx_step_2.wav");
-        this.load.image("background");
         this.load.image("card-back", "cards/card-back.png");
 
         // Dynamic loading based on config

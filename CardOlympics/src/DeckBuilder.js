@@ -550,6 +550,7 @@ export class DeckBuilder extends Phaser.Scene {
 
         // Commit runners config to the global registry
         this.registry.set('runners', this.runners);
+        this.registry.set('isDebugMode', true);
         this.scene.start('Race');
     }
 

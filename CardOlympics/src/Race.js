@@ -11,8 +11,12 @@ export class Race extends Phaser.Scene {
         this.qualificationTarget = this.registry.get('qualificationTarget');
         this.round = this.registry.get('round');
 
+        // Debug mode checks
+        this.isDebugMode = this.registry.get('isDebugMode') || false;
+        this.timeScale = this.isDebugMode ? 0.6 : 1.0; // Slow down initial race during debug!
+
         // Track variables
-        this.trackLength = 4000; // 400m * 10 pixels/m
+        this.trackLength = this.isDebugMode ? 8000 : 4000; // 800m during debugging, 400m normally
         this.isRaceActive = false;
         this.raceFinished = false;
         this.finishOrder = []; // Track placement order
@@ -93,11 +97,24 @@ export class Race extends Phaser.Scene {
 
         // Start Countdown Sequence
         this.startCountdown();
+
+        // Keyboard debug speed controls
+        if (this.input && this.input.keyboard) {
+            this.input.keyboard.on('keydown-UP', () => {
+                this.timeScale = Math.min(3.0, this.timeScale + 0.25);
+                this.createFloaterText(`SPEED: ${this.timeScale.toFixed(2)}x`, 0x2ecc71);
+            });
+            this.input.keyboard.on('keydown-DOWN', () => {
+                this.timeScale = Math.max(0.25, this.timeScale - 0.25);
+                this.createFloaterText(`SPEED: ${this.timeScale.toFixed(2)}x`, 0xe74c3c);
+            });
+        }
     }
 
     createTrack() {
+        const totalWidth = this.trackLength + 500;
         // Dark track area
-        this.add.rectangle(0, 50, 4500, 380, 0x2c3e50).setOrigin(0);
+        this.add.rectangle(0, 50, totalWidth, 380, 0x2c3e50).setOrigin(0);
 
         // Draw Lanes (4 lanes)
         this.laneY = [110, 190, 270, 350];
@@ -105,7 +122,7 @@ export class Race extends Phaser.Scene {
         // Draw Lane dividers
         for (let i = 0; i <= 4; i++) {
             const y = 70 + i * 80;
-            const line = this.add.rectangle(2250, y, 4500, 2, 0x7f8c8d);
+            const line = this.add.rectangle(totalWidth / 2, y, totalWidth, 2, 0x7f8c8d);
         }
 
         // Zone Markings
@@ -113,11 +130,12 @@ export class Race extends Phaser.Scene {
         this.add.rectangle(150, 230, 8, 320, 0xffffff);
         this.add.text(150, 60, "START", { fontSize: '12px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
 
-        // Leg pass zones (1000px = 100m, 2000px = 200m, 3000px = 300m)
+        // Leg pass zones (e.g. 1000px passes for 4000px length, 2000px passes for 8000px length)
+        const legDistance = this.trackLength / 4;
         for (let leg = 1; leg <= 3; leg++) {
-            const x = 150 + leg * 1000;
+            const x = 150 + leg * legDistance;
             this.add.rectangle(x, 230, 4, 320, 0xf1c40f, 0.5);
-            this.add.text(x, 60, `${leg}00m PASS`, { fontSize: '10px', color: '#f1c40f' }).setOrigin(0.5);
+            this.add.text(x, 60, `${leg * (this.trackLength / 40)}m PASS`, { fontSize: '10px', color: '#f1c40f' }).setOrigin(0.5);
         }
 
         // Finish Line
@@ -163,7 +181,7 @@ export class Race extends Phaser.Scene {
         });
 
         // Set camera bounds & follow player
-        this.cameras.main.setBounds(0, 0, 4500, 640);
+        this.cameras.main.setBounds(0, 0, this.trackLength + 500, 640);
         this.cameras.main.scrollX = 0;
     }
 
@@ -399,7 +417,7 @@ export class Race extends Phaser.Scene {
         const txt = this.add.text(x, y, text, {
             fontSize: '11px',
             fontStyle: 'bold',
-            color: Phaser.Display.Color.IntegerToColor(color).toCSS()
+            color: '#' + color.toString(16).padStart(6, '0')
         }).setOrigin(0.5);
 
         this.tweens.add({
@@ -458,7 +476,7 @@ export class Race extends Phaser.Scene {
             }
         }
 
-        const dt = delta / 1000;
+        const dt = (delta / 1000) * this.timeScale;
 
         // --- UPDATE PLAYER PHYSICS ---
         this.updateTeamPhysics(this.playerTeam, dt);
@@ -473,7 +491,8 @@ export class Race extends Phaser.Scene {
         }
 
         // Camera follow (bounded)
-        const cameraScrollX = Math.min(3760, Math.max(0, this.playerTeam.distance - 200));
+        const maxScrollX = (this.trackLength + 500) - this.sys.game.scale.width;
+        const cameraScrollX = Math.min(maxScrollX, Math.max(0, this.playerTeam.distance - 200));
         this.cameras.main.scrollX = cameraScrollX;
 
         // --- UPDATE AI TEAMS ---
@@ -545,8 +564,9 @@ export class Race extends Phaser.Scene {
         // Move distance
         team.distance += team.speed * dt * 1.5; // multiplier scales speed to screen pixels
 
-        // Check Baton Pass at 1000, 2000, 3000px
-        const nextLegDistance = (team.activeLeg + 1) * 1000;
+        // Check Baton Pass at legDistance increments
+        const legDistance = this.trackLength / 4;
+        const nextLegDistance = (team.activeLeg + 1) * legDistance;
         if (team.distance >= nextLegDistance && team.activeLeg < 3) {
             this.executeBatonPass(team);
         }
