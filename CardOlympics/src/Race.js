@@ -47,7 +47,7 @@ export class Race extends Phaser.Scene {
                 const baseAccel = (110 + Math.random() * 40) * roundMultiplier;
                 const baseStamina = (110 + Math.random() * 40) * roundMultiplier;
                 const baseEndurance = baseSpeed * (0.7 + Math.random() * 0.1);
-                
+
                 return {
                     stats: {
                         speed: Math.min(256, baseSpeed),
@@ -75,6 +75,7 @@ export class Race extends Phaser.Scene {
                 nextAiActionTime: 1000 + Math.random() * 2000 // when AI triggers their burst
             });
         }
+        console.log(this.playerTeam, this.aiTeams);
 
         // Particle group for dust trails
         this.particles = [];
@@ -100,11 +101,11 @@ export class Race extends Phaser.Scene {
 
         // Draw Lanes (4 lanes)
         this.laneY = [110, 190, 270, 350];
-        
+
         // Draw Lane dividers
         for (let i = 0; i <= 4; i++) {
             const y = 70 + i * 80;
-            const line = this.add.grid(2250, y, 4500, 2, 0, 0, 0x7f8c8d);
+            const line = this.add.rectangle(2250, y, 4500, 2, 0x7f8c8d);
         }
 
         // Zone Markings
@@ -169,7 +170,7 @@ export class Race extends Phaser.Scene {
     createHUD() {
         // Bottom Panel Background (fixed relative to camera)
         this.hudPanel = this.add.container(0, 450).setScrollFactor(0);
-        
+
         // 9-slice panel background
         const bg = this.add.nineslice(0, 0, 'bg-9slice', null, this.sys.game.scale.width, 190, 16, 16, 16, 16)
             .setOrigin(0);
@@ -260,7 +261,7 @@ export class Race extends Phaser.Scene {
             btnBg.on('pointerover', () => {
                 btnContainer.setScale(1.25);
                 btnContainer.setDepth(100);
-                
+
                 // Position tooltip above the card relative to screen coordinates
                 const worldX = startX + index * spacingX;
                 const worldY = 450 + startY; // 450 is HUD panel Y position, startY is local offset
@@ -379,7 +380,7 @@ export class Race extends Phaser.Scene {
             // Check if player is behind any AI team
             const playerPos = this.playerTeam.distance;
             const isBehind = this.aiTeams.some(ai => ai.distance > playerPos && ai.distance - playerPos < 400);
-            
+
             if (isBehind) {
                 this.playerTeam.activeEffects.speedBoost = stats.boostAmount;
                 this.time.delayedCall(stats.duration, () => {
@@ -461,11 +462,11 @@ export class Race extends Phaser.Scene {
 
         // --- UPDATE PLAYER PHYSICS ---
         this.updateTeamPhysics(this.playerTeam, dt);
-        
+
         // Update visuals
         this.playerSprite.x = 150 + this.playerTeam.distance;
         this.playerNameTag.x = this.playerSprite.x;
-        
+
         // Spawn dust particles
         if (Math.random() < 0.15 && this.playerTeam.speed > 50) {
             this.spawnDust(this.playerSprite.x - 20, this.playerSprite.y + 15);
@@ -568,10 +569,10 @@ export class Race extends Phaser.Scene {
 
     executeBatonPass(team) {
         team.activeLeg++;
-        
+
         // Sound and particle effect
         this.sound.play("sfx_card_draw");
-        
+
         if (team.name === "PLAYER") {
             const newRunner = this.runners[team.activeLeg];
             team.stats = newRunner.finalStats;
@@ -582,7 +583,7 @@ export class Race extends Phaser.Scene {
 
             // Swap tag
             this.playerNameTag.setText(newRunner.name);
-            
+
             // HUD refresh
             this.updateHUDValues();
             this.createFloaterText("BATON PASS!", 0xf1c40f);
@@ -662,10 +663,10 @@ export class Race extends Phaser.Scene {
         resultsOverlay.add(header);
 
         // Qualification status text
-        const statusText = isQualified 
-            ? "QUALIFIED FOR THE NEXT ROUND!" 
+        const statusText = isQualified
+            ? "QUALIFIED FOR THE NEXT ROUND!"
             : `FAILED TO REACH TOP ${this.qualificationTarget} place`;
-        
+
         const subheader = this.add.text(this.sys.game.scale.width / 2, 250, statusText, {
             fontSize: '18px',
             color: '#ecf0f1',
@@ -687,12 +688,12 @@ export class Race extends Phaser.Scene {
         // Action Button using spr_button_9slice
         const btnY = 460;
         const btn = this.add.container(this.sys.game.scale.width / 2, btnY);
-        
+
         const btnBg = this.add.nineslice(0, 0, 'button-9slice', null, 180, 40, 16, 16, 16, 16)
             .setOrigin(0.5)
             .setInteractive()
             .setTint(isQualified ? 0x27ae60 : 0xc0392b);
-        
+
         const labelText = isQualified ? "Next Round" : "Try Again";
         const btnText = this.add.text(0, 0, labelText, {
             fontSize: '16px',
@@ -709,7 +710,7 @@ export class Race extends Phaser.Scene {
 
         btnBg.on('pointerdown', () => {
             resultsOverlay.destroy();
-            
+
             if (isQualified) {
                 // Setup next round
                 this.setupNextRound();
@@ -742,5 +743,12 @@ export class Race extends Phaser.Scene {
         // We can transition back to DeckBuilder. Inside DeckBuilder init(), we'll detect 'needsDiscardDraft'
         // and prompt the user to select card(s) to discard from their runners, then draw 4 cards.
         this.scene.start('DeckBuilder');
+    }
+
+    getPlacementString(placement) {
+        if (placement === 1) return "1st";
+        if (placement === 2) return "2nd";
+        if (placement === 3) return "3rd";
+        return `${placement}th`;
     }
 }

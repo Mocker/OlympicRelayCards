@@ -357,8 +357,8 @@ export class DeckBuilder extends Phaser.Scene {
         if (this.tooltip) this.tooltip.destroy();
 
         // Position above the card, bounding it to stay on screen
-        const tx = Math.max(10, Math.min(this.sys.game.scale.width - 190, cardX - 52));
-        const ty = Math.max(10, cardY - 65);
+        const tx = Math.max(50, Math.min(this.sys.game.scale.width - 190, cardX - 52));
+        const ty = Math.max(50, cardY - 65);
 
         this.tooltip = this.add.container(tx, ty).setDepth(300);
 
@@ -367,13 +367,13 @@ export class DeckBuilder extends Phaser.Scene {
             .setOrigin(0);
 
         const name = this.add.text(12, 10, `${card.name}`, {
-            fontSize: '11px',
+            fontSize: '16px',
             fontStyle: 'bold',
             color: '#ff9f43',
             fontFamily: 'monospace'
         });
         const desc = this.add.text(12, 26, card.description, {
-            fontSize: '9px',
+            fontSize: '12px',
             color: '#ffffff',
             wordWrap: { width: 156 },
             fontFamily: 'monospace'
@@ -475,7 +475,7 @@ export class DeckBuilder extends Phaser.Scene {
             enableLayoutDebugger(this, this.confirmDiscardBtn, 'ConfirmDiscardBtn');
         } else {
             // Redraw Button using spr_button_9slice
-            this.redrawBtn = this.add.container(553, 557);
+            this.redrawBtn = this.add.container(this.sys.game.scale.width / 2 - 65, this.sys.game.scale.height - 60);
             const rBg = this.add.nineslice(0, 0, 'button-9slice', null, 130, 35, 16, 16, 16, 16)
                 .setOrigin(0)
                 .setInteractive()
@@ -488,7 +488,7 @@ export class DeckBuilder extends Phaser.Scene {
             rBg.on('pointerout', () => rBg.setTint(0x8e44ad));
 
             // Start Relay Button using spr_button_9slice
-            this.startBtn = this.add.container(553, 557);
+            this.startBtn = this.add.container(this.sys.game.scale.width - 160, this.sys.game.scale.height - 60);
             const sBg = this.add.nineslice(0, 0, 'button-9slice', null, 130, 35, 16, 16, 16, 16)
                 .setOrigin(0)
                 .setInteractive()
@@ -498,12 +498,59 @@ export class DeckBuilder extends Phaser.Scene {
 
             sBg.on('pointerdown', () => this.startRace());
 
+            // Debug Start Button using spr_button_9slice
+            this.leftBtn = this.add.container(30, this.sys.game.scale.height - 60);
+            const lBg = this.add.nineslice(0, 0, 'button-9slice', null, 130, 35, 16, 16, 16, 16)
+                .setOrigin(0)
+                .setInteractive()
+                .setTint(0xd35400);
+            this.leftTxt = this.add.text(65, 17.5, "Debug Start", { fontSize: '12px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
+            this.leftBtn.add([lBg, this.leftTxt]);
+
+            lBg.on('pointerdown', () => this.debugStartRace());
+            lBg.on('pointerover', () => lBg.setTint(0xe67e22));
+            lBg.on('pointerout', () => lBg.setTint(0xd35400));
+
             this.updateStartButton();
 
             // Enable layout debugging
             enableLayoutDebugger(this, this.redrawBtn, 'RedrawBtn');
             enableLayoutDebugger(this, this.startBtn, 'StartBtn');
+            enableLayoutDebugger(this, this.leftBtn, 'LeftBtn');
         }
+    }
+
+    debugStartRace() {
+        this.sound.play("sfx_card_select");
+
+        // Pre-set cards database
+        const cardsMap = {};
+        CARD_DATABASE.forEach(c => {
+            cardsMap[c.id] = c;
+        });
+
+        const presetDecks = [
+            // Runner 1: Sprint, Spiked Shoes, Adrenaline Dash, Turbo Boost
+            ['sprint-safe', 'shoes-safe', 'dash-risky', 'turbo-active'],
+            // Runner 2: Steady Jog, Pace Setter, Cheer, Catch Breath
+            ['jog-safe', 'heavy-risky', 'yell-active', 'breath-safe'],
+            // Runner 3: Catch Breath, Pace Setter, Sabotage, Steady Jog
+            ['breath-safe', 'heavy-risky', 'trip-active', 'jog-safe'],
+            // Runner 4: Overdrive, Turbo Boost, Spiked Shoes, Adrenaline Dash
+            ['overdrive-danger', 'turbo-active', 'shoes-safe', 'dash-risky']
+        ];
+
+        this.runners.forEach((runner, rIdx) => {
+            runner.equippedCards = presetDecks[rIdx].map(cardId => {
+                const baseCard = cardsMap[cardId];
+                return baseCard ? { ...baseCard, isEquipped: true } : null;
+            });
+            runner.finalStats = calculateRunnerStats(runner.baseStats, runner.equippedCards.filter(Boolean));
+        });
+
+        // Commit runners config to the global registry
+        this.registry.set('runners', this.runners);
+        this.scene.start('Race');
     }
 
     updateDiscardButton() {
@@ -577,7 +624,7 @@ export class DeckBuilder extends Phaser.Scene {
             bg.setTint(0x27ae60);
             bg.setInteractive();
             this.startBtn.setAlpha(1.0);
-            this.startTxt.setText("Begin Relay");
+            this.startTxt.setText("Start Relay");
         } else {
             bg.setTint(0x7f8c8d);
             bg.disableInteractive();
